@@ -1,0 +1,546 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Village Cargo Driver</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 450px;
+            margin: auto;
+            top: 50%;
+            transform: translateY(-50%);
+            aspect-ratio: 16/9;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background: #87CEEB;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        .hidden { display: none !important; }
+        h1 {
+            font-size: 2.5rem;
+            color: #FFD700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px #000;
+        }
+        h2 {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+        p {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            max-width: 80%;
+            color: #ddd;
+        }
+        .btn {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(#ff9933, #000080, #319201); /* Indian Tricolor inspired accents */
+            border: 2px solid #fff;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        /* HUD Top Bar Styles */
+        #hudBar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 10px;
+            border-radius: 10px;
+        }
+        .bar-container {
+            width: 60px;
+            height: 10px;
+            background: #444;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            overflow: hidden;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.1s;
+        }
+        #fuelFill { background: #ffcc00; }
+        #healthFill { background: #ff3333; }
+        
+        /* Control Buttons */
+        #topControls {
+            position: absolute;
+            top: 40px;
+            right: 15px;
+            z-index: 6;
+            display: flex;
+            gap: 10px;
+        }
+        .ctrl-icon-btn {
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        /* Mobile Touch Pedals */
+        #touchControls {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 6;
+        }
+        .pedal-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .pedal {
+            width: 65px;
+            height: 65px;
+            background: rgba(255,255,255,0.25);
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem;
+            touch-action: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .pedal:active {
+            background: rgba(255,255,255,0.5);
+            transform: scale(0.9);
+        }
+        .pedal-left { background: rgba(230, 70, 70, 0.3); }
+        .pedal-right { background: rgba(70, 230, 70, 0.3); }
+        
+        /* Stats summary style */
+        .stats-summary {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            min-width: 240px;
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div id="hudBar">
+        <div class="hud-item">Lev: <span id="hudLevel">1</span></div>
+        <div class="hud-item">Score: <span id="hudScore">0</span></div>
+        <div class="hud-item">Coins: ₹<span id="hudCoins">0</span></div>
+        <div class="hud-item">Cargo: <span id="hudCargo">0</span>/<span id="hudTarget">0</span></div>
+        <div class="hud-item">
+            Fuel
+            <div class="bar-container"><div id="fuelFill" class="bar-fill"></div></div>
+        </div>
+        <div class="hud-item">
+            Health
+            <div class="bar-container"><div id="healthFill" class="bar-fill"></div></div>
+        </div>
+    </div>
+
+    <div id="topControls">
+        <div id="btnPause" class="ctrl-icon-btn">‖</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="screenStart" class="overlay">
+        <h1>Village Cargo Driver</h1>
+        <p>Drive your Chota Hathi truck through bumpy Indian village roads. Collect local farm fresh vegetables, rice bags, and milk cans, and deliver them to the village depot safe and sound!</p>
+        <button class="btn" id="btnStart">START HARVEST</button>
+    </div>
+
+    <div id="screenPause" class="overlay hidden">
+        <h1>Game Paused</h1>
+        <p>Take a break, drink some Chai!</p>
+        <div style="display:flex; gap:15px;">
+            <button class="btn" id="btnResume">RESUME</button>
+            <button class="btn" id="btnRestartPause" style="background: #e64646;">RESTART</button>
+        </div>
+    </div>
+
+    <div id="screenLevelComplete" class="overlay hidden">
+        <h1 style="color: #46e646;">Level Complete!</h1>
+        <h3 id="lblLevelTitle" style="margin-bottom:15px;">Village Route Cleared</h3>
+        <div class="stats-summary">
+            <div class="stats-row"><span>Cargo Delivered:</span><span id="statLevelCargo">0</span></div>
+            <div class="stats-row"><span>Coins Earned:</span><span id="statLevelCoins">₹0</span></div>
+            <div class="stats-row"><span>Bonus Points:</span><span id="statLevelBonus">0</span></div>
+        </div>
+        <button class="btn" id="btnNextLevel">NEXT VILLAGE</button>
+    </div>
+
+    <div id="screenGameOver" class="overlay hidden">
+        <h1 style="color: #ff3333;">Delivery Failed!</h1>
+        <p id="lblGameOverReason">Your vehicle broke down or ran completely out of diesel.</p>
+        <div class="stats-summary">
+            <div class="stats-row"><span>Final Score:</span><span id="statGoScore">0</span></div>
+            <div class="stats-row"><span>Total Coins:</span><span id="statGoCoins">₹0</span></div>
+        </div>
+        <button class="btn" id="btnRestart">TRY AGAIN</button>
+    </div>
+
+    <div id="screenWin" class="overlay hidden">
+        <h1 style="color: #FFD700;">✨ Maha Driver Champion! ✨</h1>
+        <p>Congratulations! You successfully negotiated all 10 bumpy village routes and supplied the entire block with fresh cargo!</p>
+        <div class="stats-summary">
+            <div class="stats-row"><span>Grand Total Score:</span><span id="statWinScore">0</span></div>
+            <div class="stats-row"><span>Total Coins Acquired:</span><span id="statWinCoins">₹0</span></div>
+        </div>
+        <button class="btn" id="btnPlayAgain">PLAY AGAIN</button>
+    </div>
+
+    <div id="touchControls">
+        <div class="pedal-group">
+            <div id="pedalBrake" class="pedal pedal-left">
+                <span>Brake</span>
+                <span>◀</span>
+            </div>
+            <div id="pedalGas" class="pedal pedal-right">
+                <span>Gas</span>
+                <span>▶</span>
+            </div>
+        </div>
+        <div class="pedal-group">
+            <div id="pedalLeft" class="pedal">
+                <span>Tilt L</span>
+                <span>↺</span>
+            </div>
+            <div id="pedalRight" class="pedal">
+                <span>Tilt R</span>
+                <span>↻</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * VILLAGE CARGO DRIVER - Main Game Script
+ * Pure vanilla JS & HTML5 Canvas side-scroller vehicle physics simulation game.
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Set virtual responsive width/height resolution base
+const V_WIDTH = 800;
+const V_HEIGHT = 450;
+
+// Game Systems Tracking Variables
+let gameState = 'START'; // START, PLAYING, PAUSED, LEVEL_COMPLETE, GAMEOVER, WIN
+let currentLevel = 1;
+const maxLevels = 10;
+
+let score = 0;
+let coins = 0;
+let levelCargoCollected = 0;
+let totalLevelCargoNeeded = 3;
+
+// Day/Night Cycle variables
+let timeOfDay = 0; // 0 to 2400 ticks cyclical
+const dayLength = 1600; 
+
+// Physics & Controls state object
+const keys = {};
+const touchControls = { gas: false, brake: false, tiltLeft: false, tiltRight: false };
+
+// DOM Cache Elements for Fast Updates
+const hudLevel = document.getElementById('hudLevel');
+const hudScore = document.getElementById('hudScore');
+const hudCoins = document.getElementById('hudCoins');
+const hudCargo = document.getElementById('hudCargo');
+const hudTarget = document.getElementById('hudTarget');
+const fuelFill = document.getElementById('fuelFill');
+const healthFill = document.getElementById('healthFill');
+
+// Overlays UI Reference
+const screenStart = document.getElementById('screenStart');
+const screenPause = document.getElementById('screenPause');
+const screenLevelComplete = document.getElementById('screenLevelComplete');
+const screenGameOver = document.getElementById('screenGameOver');
+const screenWin = document.getElementById('screenWin');
+
+// Define Level Configs (Progression metrics)
+const levelConfigs = {
+    1: { name: "Ramnagar Outskirts", cargoNeeded: 2, hillRoughness: 0.15, length: 4500, gravity: 0.22, itemTypes: ['vegetable'] },
+    2: { name: "Bansi Farm Tracks", cargoNeeded: 3, hillRoughness: 0.22, length: 5000, gravity: 0.22, itemTypes: ['vegetable', 'milk'] },
+    3: { name: "Ganga River Basin", cargoNeeded: 3, hillRoughness: 0.28, length: 5500, gravity: 0.22, itemTypes: ['vegetable', 'rice'] },
+    4: { name: "Saraswati Valley Cross", cargoNeeded: 4, hillRoughness: 0.35, length: 6000, gravity: 0.23, itemTypes: ['milk', 'rice'] },
+    5: { name: "Pratapgarh Steep Climbs", cargoNeeded: 4, hillRoughness: 0.45, length: 6500, gravity: 0.23, itemTypes: ['vegetable', 'milk', 'rice'] },
+    6: { name: "Harijan Bumpy Corridors", cargoNeeded: 5, hillRoughness: 0.52, length: 7000, gravity: 0.24, itemTypes: ['vegetable', 'rice'] },
+    7: { name: "Dhani High Cliffs", cargoNeeded: 5, hillRoughness: 0.60, length: 7500, gravity: 0.24, itemTypes: ['milk', 'rice'] },
+    8: { name: "Chandanpur Rocky Pass", cargoNeeded: 6, hillRoughness: 0.68, length: 8000, gravity: 0.24, itemTypes: ['vegetable', 'milk', 'rice'] },
+    9: { name: "Kiari Muddy Ridges", cargoNeeded: 6, hillRoughness: 0.75, length: 8500, gravity: 0.25, itemTypes: ['rice'] },
+    10: { name: "Maha Delivery Final Frontier", cargoNeeded: 7, hillRoughness: 0.85, length: 9500, gravity: 0.25, itemTypes: ['vegetable', 'milk', 'rice'] }
+};
+
+// Procedural World Terrain Generator Cache Object
+let terrainPoints = [];
+let gameItems = [];
+let staticScenery = [];
+
+// Vehicle State Initialization Parameters
+let truck = {
+    x: 150,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+    vAngle: 0,
+    fuel: 100,
+    health: 100,
+    wheelRadius: 16,
+    frontWheelX: 30,
+    backWheelX: -30,
+    wheelYOffset: 15,
+    fwAngle: 0,
+    bwAngle: 0,
+    cargoLoaded: [] // graphical rendering stack tracking
+};
+
+// --- GAME INPUT EVENT HANDLERS ---
+window.addEventListener('keydown', (e) => { keys[e.code] = true; if(e.code==="Space" || e.code==="Escape") togglePause(); });
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+function bindTouchPedal(elementId, stateProperty) {
+    const element = document.getElementById(elementId);
+    element.addEventListener('touchstart', (e) => { e.preventDefault(); touchControls[stateProperty] = true; });
+    element.addEventListener('touchend', (e) => { e.preventDefault(); touchControls[stateProperty] = false; });
+    element.addEventListener('touchcancel', (e) => { e.preventDefault(); touchControls[stateProperty] = false; });
+}
+bindTouchPedal('pedalGas', 'gas');
+bindTouchPedal('pedalBrake', 'brake');
+bindTouchPedal('pedalLeft', 'tiltLeft');
+bindTouchPedal('pedalRight', 'tiltRight');
+
+// Handle Window resizing nicely
+function resizeCanvas() {
+    let container = document.getElementById('gameContainer');
+    canvas.width = V_WIDTH;
+    canvas.height = V_HEIGHT;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Button Event Listeners UI
+document.getElementById('btnStart').addEventListener('click', () => { startGame(); });
+document.getElementById('btnPause').addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
+document.getElementById('btnResume').addEventListener('click', () => { togglePause(); });
+document.getElementById('btnRestartPause').addEventListener('click', () => { initLevel(currentLevel); togglePause(); });
+document.getElementById('btnNextLevel').addEventListener('click', () => { 
+    currentLevel++; 
+    if(currentLevel <= maxLevels){ initLevel(currentLevel); changeState('PLAYING'); } 
+    else { changeState('WIN'); } 
+});
+document.getElementById('btnRestart').addEventListener('click', () => { initLevel(currentLevel); changeState('PLAYING'); });
+document.getElementById('btnPlayAgain').addEventListener('click', () => { currentLevel = 1; score = 0; coins = 0; initLevel(1); changeState('PLAYING'); });
+
+function changeState(newState) {
+    gameState = newState;
+    screenStart.classList.add('hidden');
+    screenPause.classList.add('hidden');
+    screenLevelComplete.classList.add('hidden');
+    screenGameOver.classList.add('hidden');
+    screenWin.classList.add('hidden');
+    
+    if (gameState === 'START') screenStart.classList.remove('hidden');
+    if (gameState === 'PAUSED') screenPause.classList.remove('hidden');
+    if (gameState === 'LEVEL_COMPLETE') {
+        document.getElementById('statLevelCargo').innerText = levelCargoCollected;
+        document.getElementById('statLevelCoins').innerText = "₹" + (levelCargoCollected * 50);
+        document.getElementById('statLevelBonus').innerText = Math.floor(truck.fuel * 10);
+        document.getElementById('lblLevelTitle').innerText = levelConfigs[currentLevel] ? levelConfigs[currentLevel].name : "Route Cleared";
+        screenLevelComplete.classList.remove('hidden');
+    }
+    if (gameState === 'GAMEOVER') {
+        document.getElementById('statGoScore').innerText = score;
+        document.getElementById('statGoCoins').innerText = "₹" + coins;
+        screenGameOver.classList.remove('hidden');
+    }
+    if (gameState === 'WIN') {
+        document.getElementById('statWinScore').innerText = score;
+        document.getElementById('statWinCoins').innerText = "₹" + coins;
+        screenWin.classList.remove('hidden');
+    }
+}
+
+function togglePause() {
+    if(gameState === 'PLAYING') changeState('PAUSED');
+    else if(gameState === 'PAUSED') changeState('PLAYING');
+}
+
+function startGame() {
+    score = 0;
+    coins = 0;
+    currentLevel = 1;
+    initLevel(currentLevel);
+    changeState('PLAYING');
+}
+
+// --- PROCEDURAL GENERATION MATHEMATICS ENGINE ---
+function generateTerrain(config) {
+    terrainPoints = [];
+    let length = config.length;
+    let step = 25;
+    let baseHeight = 330;
+    
+    // Seeded-style pseudo-random frequency waves for reproducible feel per level reset
+    for (let x = 0; x <= length; x += step) {
+        let y = baseHeight;
+        
+        // Large rolling hills
+        y += Math.sin(x * 0.001) * 70;
+        // Medium bumpy contours
+        y += Math.cos(x * 0.004) * 35 * (1 + config.hillRoughness);
+        // Small micro-bumps (village unpaved roads simulation)
+        y += Math.sin(x * 0.02) * 8 * config.hillRoughness;
+        // Steep sudden inclines later in track
+        if (x > length * 0.4 && x < length * 0.8) {
+            y -= Math.sin((x - length * 0.4) * 0.002) * 80 * config.hillRoughness;
+        }
+
+        // Clamp inside dynamic window bounds
+        if(y > V_HEIGHT - 30) y = V_HEIGHT - 30;
+        
+        terrainPoints.push({ x: x, y: y });
+    }
+}
+
+function getTerrainHeight(x) {
+    if (x < 0) return terrainPoints[0].y;
+    if (x >= terrainPoints[terrainPoints.length - 1].x) {
+        return terrainPoints[terrainPoints.length - 1].y;
+    }
+    
+    // Binary search optimized lookup for performance
+    let step = 25;
+    let index = Math.floor(x / step);
+    if(index >= terrainPoints.length - 1) return terrainPoints[terrainPoints.length-1].y;
+    
+    let p1 = terrainPoints[index];
+    let p2 = terrainPoints[index + 1];
+    
+    // Linear Interpolation formula
+    let ratio = (x - p1.x) / (p2.x - p1.x);
+    return p1.y + ratio * (p2.y - p1.y);
+}
+
+// Populate background props & collectible entities
+function populateWorldObjects(config) {
+    gameItems = [];
+    staticScenery = [];
+    
+    let length = config.length;
+    
+    // Populate Village Scenery (Houses, Trees, Stationary Tractors)
+    for(let x = 300; x < length - 400; x += 180 + Math.random() * 300) {
+        let y = getTerrainHeight(x);
+        let randType = Math.random();
+        if(randType < 0.45) {
+            staticScenery.push({ x: x, y: y, type: 'tree', size: 35 + Math.random()*20 });
+        } else if(randType < 0.8) {
+            staticScenery.push({ x: x, y: y, type: 'house', variant: Math.floor(Math.random()*2) });
+        } else {
+            staticScenery.push({ x: x, y: y, type: 'tractor' });
+        }
+    }
+    
+    // Populate Collectible Game Items (Fuel Jerry Cans, Coins, Village Cargo Products)
+    let itemSpacing = 220 - (config.hillRoughness * 40);
+    for(let x = 450; x < length - 500; x += itemSpacing + Math.random()*150) {
+        let y = getTerrainHeight(x) - 40 - Math.random()*40;
+        let roll = Math.random();
+        
+        if (roll < 0.25) {
+          
